@@ -1339,3 +1339,48 @@ body.is-pip-mode .btn-toggle-size {
     transform: scale(1.02);
     transition: all 0.2s ease-out;
 }
+
+body.android-app {
+    background-color: var(--bg-card);
+    align-items: stretch;
+    padding: 0;
+}
+
+body.android-app .container {
+    height: 100dvh !important; /* Respeita a UI do navegador/Android */
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+}
+
+body.android-app .editor-area {
+    flex-grow: 1;
+    margin-bottom: 1rem;
+    border-color: transparent; /* Visual mais limpo para mobile */
+    background-color: var(--bg-app);
+}
+
+/* Área de toque otimizada para o dock inferior */
+body.android-app .control-dock {
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+}
+
+body.android-app .btn-action {
+    flex: 1;
+    padding: 18px 0; /* Maior área vertical para o toque (Polegar) */
+    border-radius: 16px;
+}
+
+body.android-app .btn-mic {
+    flex: 1.5; /* O botão de gravar ganha mais destaque */
+}
+
+/* Ocultar textos no mobile, deixando apenas os ícones para limpar a UI */
+body.android-app .btn-action span {
+    display: none;
+}
