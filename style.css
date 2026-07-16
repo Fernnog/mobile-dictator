@@ -1,0 +1,1341 @@
+/* =============================================== */
+/* 1. RESET & VARIÁVEIS DE CORES                   */
+/* =============================================== */
+:root {
+    /* Cores Funcionais */
+    --c-mic: #4f46e5;      /* Indigo */
+    --c-mic-active: #ef4444; /* Red - Gravação Ativa */
+    --c-upload: #8b5cf6;   /* Violet */
+    --c-magic: #f59e0b;    /* Amber */
+    --c-legal: #0ea5e9;    /* Sky Blue */
+    --c-copy: #10b981;     /* Emerald */
+    --c-clear: #f43f5e;    /* Rose */
+    
+    /* UI Neutros */
+    --bg-app: #f3f4f6;
+    --bg-card: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    
+    /* Sombras & Radius */
+    --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --radius: 16px;
+    --btn-radius: 12px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden; 
+}
+
+/* =============================================== */
+/* 2. CONTAINER PRINCIPAL                          */
+/* =============================================== */
+.container {
+    background-color: var(--bg-card);
+    width: 100%;
+    max-width: 1050px; 
+    height: 90vh;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+/* --- MODO MINIMIZADO (WIDGET VERTICAL - v1.0.4) --- */
+/* Transforma a janela em um bloco de notas vertical flutuante */
+.container.minimized {
+    position: relative;         /* ÂNCORA para o contador absoluto */
+    padding: 0;
+    height: 100vh; 
+    width: 100vw;
+    border-radius: 0;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column; /* Fluxo Vertical */
+    justify-content: flex-end; /* Conteúdo no topo, dock embaixo */
+    overflow: hidden;
+}
+
+/* REEXIBE a área de texto, ajustada para leitura rápida */
+.container.minimized .editor-area {
+    display: flex !important;
+    height: 100%; /* Ocupa todo o espaço disponível exceto o dock */
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    order: 1; /* Garante que fique acima do dock e abaixo do visualizador */
+}
+
+.container.minimized textarea {
+    font-size: 0.95rem; /* Fonte levemente menor para compactação */
+    padding: 12px;
+    scroll-behavior: smooth; /* Suaviza o auto-scroll */
+}
+
+/* Dock Fixo no Rodapé do Widget */
+.container.minimized .control-dock {
+    width: 100%;
+    padding: 8px 12px;
+    background: #f9fafb;
+    justify-content: space-evenly; /* Prioridade 3: Melhor distribuição para 5 botões */
+    gap: 8px; /* Reduzido levemente para caber tudo */
+    box-sizing: border-box;
+    flex-shrink: 0; /* Impede que o dock seja esmagado */
+    order: 2;
+    border: none;
+}
+
+/* Oculta elementos desnecessários no modo widget para limpar a visão */
+.container.minimized .header-title,
+.container.minimized .badge-pro,
+.container.minimized .subtitle,
+.container.minimized .btn-export, 
+.container.minimized .device-selector-container,
+.container.minimized .header-actions { 
+    display: none !important;
+}
+
+/* ─── CONTADOR FLUTUANTE NO MODO INTERMEDIÁRIO (minimized) ─────────────── */
+
+/* 1. Transforma o rodapé em overlay transparente, ancorado acima do dock.
+      A altura real do dock = 8px padding + 40px botões + 8px padding = 56px. */
+.container.minimized .editor-footer {
+    display: flex !important;
+    position: absolute;
+    bottom: 56px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    pointer-events: none;      /* Cliques atravessam o overlay e atingem o texto */
+    z-index: 10;
+}
+
+/* 2. Oculta TODOS os filhos do rodapé (salvo status, botão foco, etc.)
+      A regra seguinte reexibe apenas o #charCount. */
+.container.minimized .editor-footer > * {
+    display: none !important;
+}
+
+/* 3. Reexibe e estiliza o contador como pílula translúcida minimalista */
+.container.minimized #charCount {
+    display: inline !important;     /* Sobrepõe o display:none do seletor acima */
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.95);  /* Fallback opaco para browsers sem backdrop-filter */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 3px 7px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+    border: 1px solid var(--border);
+    pointer-events: auto;           /* Permite seleção do texto do contador se necessário */
+    white-space: nowrap;            /* Garante que "X caracteres" não quebre em duas linhas */
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+/* LIMPEZA VISUAL v2.0: No estado de leitura (minimized), o visualizador
+   de ondas não é mais necessário. O espaço é devolvido para a área de texto. */
+.container.minimized .visualizer-container {
+    display: none !important;
+}
+
+/* LIMPEZA VISUAL v2.0: O botão de microfone não é necessário no estado
+   de leitura. O dock redistribui automaticamente os botões restantes
+   via justify-content: space-evenly já declarado acima. */
+.container.minimized .control-dock #micBtn {
+    display: none !important;
+}
+
+/* Ajuste fino para a onda parecer maior dentro do espaço pequeno */
+.container.minimized canvas#audioVisualizer {
+    height: 100%;
+    width: 100%;
+}
+
+/* ALTERAÇÃO PRIORIDADE 1: Regras explícitas para exibir os botões */
+.container.minimized .btn-legal,
+.container.minimized .btn-copy {
+    display: flex !important;
+    flex: 0 0 auto;
+}
+
+.container.minimized .app-header {
+    margin: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* Reposiciona o botão de toggle para o topo flutuante */
+.container.minimized .btn-toggle-size {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 50;
+    padding: 4px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* =============================================== */
+/* 3. HEADER & VISUALIZER                          */
+/* =============================================== */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-title h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge-pro {
+    font-size: 0.7rem;
+    background: #e0e7ff;
+    color: var(--c-mic);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+}
+
+.version-pill {
+    background: #e5e7eb;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+.version-pill:hover { background: #d1d5db; color: var(--text-main); }
+
+.btn-help {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-help:hover {
+    background: #e0e7ff;
+    color: var(--c-mic);
+    transform: scale(1.1);
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.visualizer-container {
+    width: 100%;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s ease; /* Suaviza o feedback visual */
+}
+
+canvas#audioVisualizer {
+    width: 100%;
+    height: 100%;
+}
+
+.btn-toggle-size {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    z-index: 10;
+}
+.btn-toggle-size:hover { background: #f3f4f6; color: var(--text-main); }
+
+/* =============================================== */
+/* 4. ÁREA DE TEXTO (EDITOR)                       */
+/* =============================================== */
+.editor-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.editor-area:focus-within {
+    border-color: var(--c-mic);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    background: #fff;
+}
+
+/* CLASSE DE FEEDBACK DE ÁUDIO (PERFORMANCE) */
+/* Usada tanto no Canvas quanto no Editor (Mini Mode) */
+.audio-detected {
+    border-color: #10b981 !important; /* Verde Emerald */
+    box-shadow: inset 0 0 0 2px rgba(16, 185, 129, 0.1) !important;
+}
+
+textarea {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: transparent;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    color: #374151;
+    box-sizing: border-box;
+}
+
+.editor-footer {
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    background: #fff;
+}
+
+/* =============================================== */
+/* 5. STATUS PILL                                  */
+/* =============================================== */
+.status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 32px; 
+    margin-bottom: 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: all 0.3s ease;
+    border-radius: 20px;
+    padding: 0 16px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.status-bar.active { opacity: 1; }
+
+.status-bar.status-recording {
+    background-color: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.15);
+}
+
+.status-bar.status-recording::before {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    animation: blinkRed 1.5s infinite;
+}
+
+@keyframes blinkRed {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.status-bar.status-ai {
+    background-color: #e0e7ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
+}
+
+.status-bar.status-ai::before {
+    content: '';
+    display: block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(79, 70, 229, 0.3);
+    border-radius: 50%;
+    border-top-color: #4f46e5;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.status-bar.status-success {
+    background-color: #d1fae5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.status-bar.status-success::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 10px;
+    border: solid #059669;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-bottom: 2px;
+}
+
+.status-bar.status-error {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #f87171;
+}
+
+.status-bar.status-warning {
+    background-color: #fef3c7; 
+    color: #d97706; 
+    border: 1px solid #fcd34d;
+}
+.status-bar.status-warning::before {
+    content: ''; 
+    display: block; 
+    width: 10px; 
+    height: 10px;
+    background: #d97706; 
+    border-radius: 50%; 
+    animation: pulseOrange 1s infinite;
+}
+@keyframes pulseOrange { 
+    0% { opacity: 1; transform: scale(1); } 
+    50% { opacity: 0.5; transform: scale(0.9); } 
+    100% { opacity: 1; transform: scale(1); } 
+}
+
+/* =============================================== */
+/* 6. DOCK DE CONTROLE (BOTÕES)                    */
+/* =============================================== */
+.control-dock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.5rem;
+    transition: all 0.3s ease;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* --- Ajustes DOCK no Modo Compacto --- */
+.container.minimized .control-dock {
+    /* Ajustes específicos feitos acima na seção .minimized */
+}
+
+.device-selector-container {
+    display: flex;
+    align-items: center;
+    max-width: 160px;
+    margin-right: 8px;
+}
+
+.device-select {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 10px 8px;
+    border-radius: var(--btn-radius);
+    font-size: 0.85rem;
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-overflow: ellipsis;
+}
+
+.device-select:hover {
+    border-color: var(--c-mic);
+    background-color: #f9fafb;
+}
+
+.btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px; 
+    border-radius: var(--btn-radius);
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    color: white;
+    flex: 1; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    white-space: nowrap;
+}
+
+.btn-action svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.5;
+    flex-shrink: 0;
+}
+
+.btn-mic    { background-color: var(--c-mic); flex: 1.5; }
+.btn-export { background-color: var(--c-upload); color: white;}
+.btn-magic  { background-color: var(--c-magic); color: white;}
+.btn-legal  { background-color: var(--c-legal); color: white;}
+.btn-copy   { background-color: var(--c-copy); color: white;}
+.btn-clear  { background-color: white; color: var(--c-clear); border: 1px solid #fecaca; }
+
+.btn-action:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.btn-clear:hover { background-color: #fef2f2; }
+
+.btn-mic.recording {
+    background-color: var(--c-mic-active);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+}
+
+/* Overrides para Botões no Modo Compacto */
+.container.minimized .btn-action {
+    flex: 0 0 auto; 
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: none;
+}
+
+.container.minimized .btn-mic {
+    width: 48px; 
+    height: 48px;
+    margin: 0;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+}
+
+/* Garante visibilidade dos botões essenciais no mini */
+.container.minimized .btn-magic { display: flex !important; background-color: #f59e0b; }
+.container.minimized .btn-clear { display: flex !important; border: none; background: #fee2e2; color: #ef4444; }
+
+.container.minimized .btn-action span { display: none; }
+
+/* =============================================== */
+/* --- NOVO: ESTILOS DA CHAVE SELETORA (ENGINE) -- */
+/* =============================================== */
+.engine-selector-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: var(--btn-radius);
+}
+
+.engine-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    min-width: 60px;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+}
+
+.toggle-switch input:checked + .slider { background-color: var(--c-mic); }
+.toggle-switch input:checked + .slider:before { transform: translateX(16px); }
+.slider.round { border-radius: 20px; }
+.slider.round:before { border-radius: 50%; }
+
+.container.minimized .engine-selector-container { display: none; } /* Oculta no widget para economizar espaço */
+
+/* -----------------------------------------------  */
+/* Drag & Drop — Feedback visual no botão Copiar    */
+/* Cursor 'grab' sinaliza a ação de arrastar        */
+/* -----------------------------------------------  */
+.btn-copy[draggable="true"] {
+    cursor: grab;
+}
+
+.btn-copy[draggable="true"]:active {
+    cursor: grabbing;
+    opacity: 0.75;
+    transform: scale(0.97);
+}
+
+/* =============================================== */
+/* 7. TOOLTIPS                                    */
+/* =============================================== */
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+    animation: fadeIn 0.2s forwards;
+}
+
+[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+    animation: fadeIn 0.2s forwards;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(5px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* --- Estilos do Mini Visualizador e Botão Exportar --- */
+#miniVisualizer {
+    display: none; /* Oculto por padrão, economizando espaço */
+    border-radius: 6px;
+    background-color: var(--bg-card, #ffffff); /* Herda a cor do card principal */
+    border: 1px solid var(--border, #e5e7eb); /* Borda padrão do sistema */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Profundidade sutil */
+    margin-right: auto;
+    margin-left: 15px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Regra de Estado: Quando o container entra em Modo Foco, exibe o widget */
+.container.focus-mode #miniVisualizer {
+    display: block;
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mantém o feedback visual existente de captação de áudio */
+.container.focus-mode #miniVisualizer.audio-detected {
+    border-color: #10b981;
+    box-shadow: inset 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.editor-footer > div {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+
+/* =============================================== */
+/* 8. MODAL & ELEMENTOS GERAIS DE AJUDA            */
+/* =============================================== */
+.modal-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(0,0,0,0.5); 
+    z-index: 1000;
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+    background: white; 
+    width: 90%; 
+    max-width: 500px; 
+    max-height: 80vh;
+    border-radius: var(--radius); 
+    padding: 1.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    display: flex; 
+    flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 1.5rem; 
+}
+.modal-header h2 { margin: 0; font-size: 1.25rem; color: var(--text-main); }
+
+.btn-close { 
+    background: none; 
+    border: none; 
+    font-size: 1.5rem; 
+    cursor: pointer; 
+    color: var(--text-muted);
+    padding: 0;
+    line-height: 1;
+}
+.btn-close:hover { color: var(--text-main); }
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- ESTILOS DE AJUDA & TECLAS --- */
+kbd {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-bottom-width: 3px;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-family: 'Inter', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    display: inline-block;
+    min-width: 20px;
+    text-align: center;
+    margin: 0 2px;
+}
+
+.help-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+.help-table th, .help-table td {
+    text-align: left;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+}
+.help-table th {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.help-desc {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+/* --- ESTILOS DE GLOSSÁRIO --- */
+.glossary-form {
+    display: flex;
+    gap: 10px;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+.glossary-form input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.glossary-form input:focus {
+    border-color: var(--c-mic);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.glossary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    border: 1px transparent;
+}
+.glossary-item:hover {
+    border-color: #e5e7eb;
+    background: #f3f4f6;
+}
+
+.btn-delete-term {
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.btn-delete-term:hover {
+    color: var(--c-clear);
+    background: #fee2e2;
+}
+
+/* =============================================== */
+/* 9. NOTIFICAÇÕES TOAST (REDE DE SEGURANÇA)       */
+/* =============================================== */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.toast {
+    background: #1f2937;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    pointer-events: auto;
+    animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-undo {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #818cf8;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-undo:hover { background: rgba(255,255,255,0.1); color: #a5b4fc; }
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================== */
+/* 10. ANIMAÇÕES DE FEEDBACK VISUAL (v1.0.6)       */
+/* =============================================== */
+
+@keyframes btnPulse {
+    0% { box-shadow: 0 0 0 0 rgba(var(--pulse-color), 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(var(--pulse-color), 0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--pulse-color), 0); }
+}
+
+.pulsing {
+    animation: btnPulse 1.5s infinite;
+    position: relative;
+    z-index: 100; /* Garante visibilidade acima de vizinhos */
+}
+
+/* Mapeamento de Cores para o efeito Pulse */
+.btn-mic.pulsing   { --pulse-color: 239, 68, 68; }   /* Red-500 */
+.btn-legal.pulsing, 
+.btn-magic.pulsing { --pulse-color: 14, 165, 233; }  /* Sky-500 */
+.btn-copy.pulsing  { --pulse-color: 16, 185, 129; }  /* Emerald-500 */
+.btn-clear.pulsing { --pulse-color: 244, 63, 94; }   /* Rose-500 */
+
+/* =============================================== */
+/* 11. SMART UNDO WIDGET (v1.0.7)                  */
+/* =============================================== */
+
+/* Estilo para o Botão Flutuante de Undo (Modo Compacto) */
+.btn-undo-float {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #1f2937; /* Dark Gray */
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: auto;
+    position: relative; /* Necessário para o Tooltip absoluto */
+    
+    /* [CORREÇÃO v1.0.7] Z-Index brutal para garantir clique sobre qualquer camada invisível */
+    z-index: 9999; 
+}
+
+.btn-undo-float:hover {
+    background-color: #374151;
+    transform: scale(1.1);
+}
+
+/* Ajuste de posicionamento no container de Toast quando em modo compacto */
+/* Sobe 85px para ficar acima do dock branco */
+.toast-container.compact-mode {
+    bottom: 85px; 
+}
+
+@keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* =============================================== */
+/* 12. MODO FOCO (MOBILE & EXPANSÃO DE TEXTO)      */
+/* =============================================== */
+.container.focus-mode .app-header,
+.container.focus-mode .subtitle,
+.container.focus-mode .visualizer-container,
+.container.focus-mode .engine-selector-container,
+.container.focus-mode .device-selector-container {
+    display: none !important;
+}
+
+.container.focus-mode .editor-area {
+    height: 100%;
+    margin-bottom: 0.5rem;
+    flex-grow: 1;
+}
+
+/* Transforma os botões em ícones quadrados/compactos */
+.container.focus-mode .control-dock .btn-action span {
+    display: none; 
+}
+
+.container.focus-mode .control-dock .btn-action {
+    flex: 1; 
+    padding: 12px 0;
+    min-width: 48px;
+}
+
+/* =============================================== */
+/* 13. RESPONSIVIDADE SMART & POP-OUT WIDGET       */
+/* =============================================== */
+
+/* --- BASE: Botões controlados por contexto, ocultos por padrão --- */
+.btn-install-pwa {
+    display: none;
+}
+
+/* O container de ação direcional é a unidade de visibilidade.
+   Os botões filhos (.btn-popout-icon) são sempre display:flex;
+   quem liga/desliga é o .popout-actions via body class. */
+.popout-actions {
+    display: none;
+    position: absolute;
+    top: 1rem;
+    /* right: distância calculada para deixar 4px de gap em relação
+       ao btn-toggle-size (right:1rem + ~36px de largura = 52px de borda esquerda).
+       right: 3.5rem = 56px → 56 - 52 = 4px de gap. */
+    right: 3.5rem;
+    align-items: center;
+    gap: 4px;
+    z-index: 10;
+}
+
+/* -----------------------------------------------  */
+/* Botões de ação pop-out (filhos de .popout-actions) */
+/* Não precisam de position/right próprios —         */
+/* o container flex cuida do layout.                 */
+/* -----------------------------------------------  */
+.btn-popout-icon {
+    background: transparent;
+    border: none;
+    color: var(--c-magic); /* Amber — mantém identidade visual alaranjada */
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s, transform 0.2s;
+    line-height: 0; /* Remove espaço fantasma abaixo do SVG */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-popout-icon:hover {
+    background: #fef3c7; /* Amber-50 — feedback sutil no hover */
+    transform: scale(1.12);
+}
+
+/* MODO MINIMIZADO (Widget Leitura) — Reposiciona o container de pop-out
+   para não colidir com o btn-toggle-size (right: 5px + ~36px = borda esquerda em 41px).
+   right: 44px → 44 - 41 = 3px de gap. */
+.container.minimized .popout-actions {
+    top: 5px;
+    right: 44px;
+}
+
+/* -----------------------------------------------  */
+/* MOBILE: Preenche a tela inteira, sem intermediário */
+/* -----------------------------------------------  */
+@media (max-width: 768px) {
+
+    body {
+        align-items: flex-start; /* Remove centralização vertical, importante em telas longas */
+        overflow-y: auto;
+    }
+
+    .container {
+        /* dvh = Dynamic Viewport Height: desconta a barra de endereço do browser mobile */
+        height: 100dvh !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        padding: 1rem !important;
+        box-shadow: none !important;
+    }
+
+    /* O botão de alternar tamanho não faz sentido em mobile */
+    .btn-toggle-size {
+        display: none !important;
+    }
+}
+
+/* -----------------------------------------------  */
+/* DESKTOP — ABA NORMAL: Exibe o botão pop-out      */
+/* Ativado pelo JS ao adicionar 'is-desktop-tab'    */
+/* ao <body>. Nunca aparece em popup ou PWA.        */
+/* -----------------------------------------------  */
+/* DESKTOP (aba normal): exibe o container de ação direcional.
+   Ativado pelo JS ao adicionar 'is-desktop-tab' ao <body>. */
+body.is-desktop-tab .popout-actions {
+    display: flex;
+}
+
+/* MODO PiP — Oculta o container dentro da janela flutuante */
+body.is-pip-mode .popout-actions {
+    display: none !important;
+}
+
+/* -----------------------------------------------  */
+/* QUALQUER CONTEXTO: Exibe botão Instalar quando   */
+/* o evento beforeinstallprompt for capturado       */
+/* -----------------------------------------------  */
+body.show-install-btn .btn-install-pwa {
+    display: block;
+    background-color: #10b981;
+    color: white;
+}
+
+/* -----------------------------------------------  */
+/* MODO DOCUMENT PICTURE-IN-PICTURE (Chrome 116+)  */
+/* Aplicado ao body da JANELA PiP pelo JavaScript  */
+/* -----------------------------------------------  */
+body.is-pip-mode {
+    background-color: var(--bg-app); /* Corrige a tela preta herdada do OS */
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
+}
+
+body.is-pip-mode .container {
+    height: 100vh;
+    width: 100vw;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+
+/* Garante que apenas o botão de destacar fique oculto dentro do PiP (Atualizado acima) */
+
+/* ============================================================
+   MODO PICTURE-IN-PICTURE: Botão de Retorno Visível
+   Garante que o botão de restaurar a janela seja visível
+   e utilizável quando o app está no modo destacado.
+   ============================================================ */
+body.is-pip-mode .btn-toggle-size {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   WIDGET MINIMIZADO: Pílula de Status Flutuante
+   Transforma a status-bar em um micro-indicador
+   sobreposto quando o container está no modo recolhido.
+   ============================================================ */
+.container.minimized .status-bar {
+    display: flex;
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: auto;
+    height: 22px;
+    padding: 0 10px;
+    font-size: 0.65rem;
+    letter-spacing: 0.02em;
+    z-index: 60;
+
+    /* Vidro fosco: elegante e não distrai */
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px); /* Compatibilidade Safari/iOS */
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+
+    /* Não intercepta cliques — o usuário interage com o painel normalmente */
+    pointer-events: none;
+}
+
+/* =============================================== */
+/* 14. PLACEHOLDER DO MODO PiP (TELA DE DESCANSO) */
+/* =============================================== */
+
+.pip-placeholder {
+    position: fixed;
+    inset: 0; /* Equivale a top/right/bottom/left: 0 — cobertura total */
+    background: var(--bg-app);
+    display: flex; /* Controlado via JS (style.display = 'flex' | 'none') */
+    align-items: center;
+    justify-content: center;
+    z-index: 0; /* Abaixo do container principal quando este retornar */
+    animation: placeholderFadeIn 0.4s ease;
+}
+
+@keyframes placeholderFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.placeholder-content {
+    position: relative; /* OBRIGATÓRIO: ancora o .pulse-ring corretamente */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 2rem;
+}
+
+.placeholder-icon {
+    color: var(--c-mic); /* Indigo — coerente com a identidade da aplicação */
+    opacity: 0.4;
+}
+
+.placeholder-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+.placeholder-body {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+    max-width: 300px;
+}
+
+/* Anel de pulso centralizado, relativo a .placeholder-content */
+.pulse-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(79, 70, 229, 0.07);
+    animation: placeholderPulse 2.5s ease-out infinite;
+    z-index: -1; /* Fica atrás do conteúdo, relativo ao .placeholder-content posicionado */
+    pointer-events: none;
+}
+
+@keyframes placeholderPulse {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+/* ================================================================ */
+/* MODO COMPACTO — ESTADO MIC (dentro de janela flutuante)          */
+/* Exibe apenas o botão de microfone, centralizado na janela.       */
+/* O frame da janela PiP é 360×500; o CSS preenche esse espaço      */
+/* com o fundo do app e centraliza apenas o botão de gravação.      */
+/* No Caminho B (window.open), a janela tem 140×140 fisicamente.    */
+/* ================================================================ */
+
+.container.minimalist-mode {
+    position: fixed;
+    inset: 0;                          /* Preenche todo o viewport da janela flutuante */
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    background: var(--bg-app);         /* Fundo cinza limpo da aplicação */
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: none;
+}
+
+/* Oculta tudo exceto o control-dock (que contém o microfone) */
+.container.minimalist-mode > * {
+    display: none;
+}
+
+.container.minimalist-mode > [data-minimalist-visible] {
+    display: flex;
+}
+
+/* Dock transparente: apenas um anel visual ao redor do microfone */
+.container.minimalist-mode .control-dock {
+    background: var(--bg-card, #ffffff);
+    border-radius: 50%;
+    padding: 4px;
+    width: 66px;
+    height: 66px;
+    gap: 0;
+    box-shadow: 0 8px 28px rgba(79, 70, 229, 0.25);
+    border: 1px solid var(--border, #e5e7eb);
+    align-items: center;
+    justify-content: center;
+    display: flex;
+}
+
+/* Apenas o microfone permanece visível no Estado Mic */
+.container.minimalist-mode .control-dock > *:not(#micBtn) {
+    display: none !important;
+}
+
+/* Garante que textos dos botões não apareçam */
+.container.minimalist-mode .control-dock .btn-action span {
+    display: none !important;
+}
+
+/* Botão de microfone levemente maior para facilitar o clique */
+.container.minimalist-mode .control-dock #micBtn {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+}
+
+.container.minimalist-mode .control-dock #micBtn svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* --- Estados visuais de botão (mantidos, usados pelo microfone) --- */
+.btn-action.state-muted {
+    filter: grayscale(75%) opacity(0.55);
+    transition: filter 0.35s ease, transform 0.2s ease;
+}
+
+.btn-action.state-muted:hover {
+    filter: grayscale(30%) opacity(0.85);
+    transform: translateY(-2px);
+}
+
+.btn-action.state-active {
+    filter: grayscale(0%) opacity(1) brightness(1.05);
+    animation: btnPulse 1.2s ease-in-out infinite;
+}
+
+/* =============================================== */
+/* 15. ESTADOS DE SUCESSO UNIFICADOS               */
+/* =============================================== */
+.btn-action.copy-success {
+    background-color: #10b981 !important; /* Emerald */
+    color: white !important;
+    border-color: #10b981 !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease-out;
+}
