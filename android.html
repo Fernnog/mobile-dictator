@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport estrito: evita zoom ao tocar no textarea, essencial para sensação de App Nativo -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ditado Mobile</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+
+    <!-- Fontes e Estilos -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="android-app">
+
+    <div id="appContainer" class="container">
+        
+        <!-- Header Minimalista -->
+        <header class="app-header" style="justify-content: center; margin-bottom: 1rem;">
+            <div class="header-title">
+                <h1>Ditado <span class="badge-pro">PRO</span></h1>
+            </div>
+        </header>
+
+        <!-- Barra de Status Centralizada -->
+        <div id="statusMsg" class="status-bar"></div>
+
+        <!-- Área do Editor Maximizada -->
+        <div class="editor-area">
+            <textarea id="transcriptionArea" placeholder="Toque no microfone e comece a falar..." spellcheck="false"></textarea>
+            
+            <!-- Rodapé do Editor (Contador e Visualizador de Áudio) -->
+            <div class="editor-footer">
+                <span id="charCount">0 caracteres</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Usamos o ID padrão para o SpeechManager engatar automaticamente -->
+                    <canvas id="audioVisualizer" width="100" height="24" title="Feedback de Áudio"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dock Inferior Touch-Friendly -->
+        <div class="control-dock" id="mainDock">
+            
+            <!-- Botão de IA (Correção) -->
+            <button id="aiFixBtn" class="btn-action btn-magic" data-tooltip="Corrigir Texto">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+            </button>
+
+            <!-- Botão Principal: Gravação -->
+            <button id="micBtn" class="btn-action btn-mic" data-tooltip="Gravar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+            </button>
+
+            <!-- Botão de Copiar / Compartilhar -->
+            <button id="copyBtn" class="btn-action btn-copy" data-tooltip="Copiar Tudo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Container de Notificações -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Script Controlador Exclusivo para Mobile -->
+    <script type="module" src="js/android.js"></script>
+
+    <!-- Registro PWA para uso offline -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js', { scope: './' })
+                    .catch(err => console.error('PWA: Falha ao registrar Service Worker no Mobile', err));
+            });
+        }
+    </script>
+</body>
+</html>
