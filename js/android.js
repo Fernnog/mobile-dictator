@@ -1,216 +1,142 @@
-import { SpeechManager } from './speech-manager.js';
-import { aiService } from './llm-service.js';
-import Glossary from './glossary.js';
-import { CONFIG } from './config.js';
+/**
+ * android.js — Thin Controller Mobile
+ * Responsabilidade: Inicializar AppCore, anexar listeners touch,
+ * gerenciar Wake Lock, Haptics e Web Share.
+ */
 
-// ========================================================
-// 1. REFERÊNCIAS DE UI (DOM Elements)
-// ========================================================
+import { AppCore } from './app-core.js';
+
 const ui = {
-    textarea: document.getElementById('transcriptionArea'),
-    charCount: document.getElementById('charCount'),
-    statusMsg: document.getElementById('statusMsg'),
-    micBtn: document.getElementById('micBtn'),
-    btnAiFix: document.getElementById('aiFixBtn'),
-    btnCopy: document.getElementById('copyBtn'),
-    canvas: document.getElementById('audioVisualizer')
+    textarea:     document.getElementById('transcriptionArea'),
+    charCount:    document.getElementById('charCount'),
+    statusMsg:    document.getElementById('statusMsg'),
+    micBtn:       document.getElementById('micBtn'),
+    btnAiFix:     document.getElementById('aiFixBtn'),
+    btnAiLegal:   document.getElementById('aiLegalBtn'),
+    btnCopy:      document.getElementById('copyBtn'),
+    btnClear:     document.getElementById('clearBtn'),
+    btnExport:    document.getElementById('exportBtn'),
+    engineToggle: document.getElementById('engineToggle'),
+    engineLabel:  document.getElementById('engineLabel'),
+    toastContainer: document.getElementById('toastContainer')
 };
 
-// ========================================================
-// 2. WAKE LOCK (Modo Insônia)
-// ========================================================
+/* ---------- WAKE LOCK ---------- */
 let wakeLock = null;
-const toggleWakeLock = async (shouldLock) => {
-    if ('wakeLock' in navigator) {
-        try {
-            if (shouldLock && !wakeLock) {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } else if (!shouldLock && wakeLock) {
-                await wakeLock.release();
-                wakeLock = null;
-            }
-        } catch (err) {
-            console.warn('Wake Lock não disponível no mobile:', err);
-        }
-    }
+const setWakeLock = async (lock) => {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        if (lock && !wakeLock) wakeLock = await navigator.wakeLock.request('screen');
+        else if (!lock && wakeLock) { await wakeLock.release(); wakeLock = null; }
+    } catch (e) { console.warn('Wake Lock indisponível:', e); }
 };
 
 document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+    if (wakeLock && document.visibilityState === 'visible') {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
     }
 });
 
-// ========================================================
-// 3. MÓDULOS DE SERVIÇO
-// ========================================================
-
-// Instancia o glossário sem callback de UI (ele atuará de forma invisível/backend)
-const glossaryManager = new Glossary();
-
-// ========================================================
-// 4. CALLBACKS E CONTROLES
-// ========================================================
-
-const stopVisualEffects = () => {
-    ui.micBtn.classList.remove('pulsing');
-    ui.btnAiFix.classList.remove('pulsing');
-    ui.btnCopy.classList.remove('pulsing');
+/* ---------- HAPTICS ---------- */
+const haptic = (pattern) => {
+    if (navigator.vibrate) navigator.vibrate(pattern);
 };
 
-const updateStatus = (status) => {
-    ui.statusMsg.className = 'status-bar';
-    ui.micBtn.style.backgroundColor = ''; 
-    stopVisualEffects();
-
-    if (status === 'starting') {
-        ui.statusMsg.textContent = "CONECTANDO...";
-        ui.statusMsg.classList.add('active', 'status-starting');
-        ui.micBtn.style.backgroundColor = '#eab308'; // Amber
-        ui.micBtn.classList.add('pulsing');
-    } else if (status === 'recording') {
-        ui.statusMsg.textContent = "GRAVANDO";
-        ui.statusMsg.classList.add('active', 'status-recording');
-        ui.micBtn.classList.add('recording', 'pulsing');
-        ui.canvas.style.display = 'block'; // Mostra visualizador
-    } else if (status === 'processing') {
-        ui.statusMsg.textContent = "PROCESSANDO IA...";
-        ui.statusMsg.classList.add('active', 'status-ai');
-    } else if (status === 'error') {
-        ui.statusMsg.textContent = "ERRO / BLOQUEADO";
-        ui.statusMsg.classList.add('active', 'status-error');
-        ui.micBtn.classList.remove('recording');
-        toggleWakeLock(false);
-    } else {
-        ui.statusMsg.textContent = "";
-        ui.statusMsg.classList.remove('active');
-        ui.micBtn.classList.remove('recording'); 
+/* ---------- TOAST MOBILE ---------- */
+const showToast = (msg, actionText, actionFn) => {
+    const c = ui.toastContainer;
+    c.innerHTML = '';
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<span>${msg}</span>`;
+    if (actionText && actionFn) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-undo';
+        btn.textContent = actionText;
+        btn.onclick = () => { actionFn(); c.innerHTML = ''; };
+        toast.appendChild(btn);
     }
+    c.appendChild(toast);
+    setTimeout(() => { if (c.contains(toast)) c.removeChild(toast); }, 5000);
 };
 
-const handleTranscriptionResult = (finalText, interimText) => {
-    if (finalText) {
-        // Aplica substituições do Glossário localmente
-        const processedText = glossaryManager.process(finalText);
-        
-        const text = ui.textarea.value;
-        const prefix = (text.length > 0 && !text.endsWith(' ') && !text.endsWith('\n')) ? ' ' : '';
-        
-        ui.textarea.value = text + prefix + processedText;
-        
-        updateCharCount();
-        saveContent();
-        
-        // Auto-scroll para o usuário ler o que está ditando
-        requestAnimationFrame(() => {
-            ui.textarea.scrollTop = ui.textarea.scrollHeight;
-        });
-    }
-};
+/* ---------- INICIALIZAÇÃO ---------- */
+const core = new AppCore(ui, {
+    onRecordingStart: () => setWakeLock(true),
+    onRecordingStop:  () => setWakeLock(false),
+    onTranscription:  () => {
+        // Expande automaticamente do modo mic minimalista para modo ação
+        document.body.classList.remove('minimalist-mode');
+        document.body.classList.add('has-content');
+    },
+    onSuccess: (msg) => showToast(msg)
+});
 
-// Instancia o Engine de Áudio
-const speechManager = new SpeechManager('audioVisualizer', handleTranscriptionResult, updateStatus);
-// Lê a preferência de motor (Nativo vs Whisper) do storage
-speechManager.useWhisper = localStorage.getItem('dd_engine_pref') === 'whisper';
+// Carrega conteúdo salvo
+core.loadContent();
 
-// ========================================================
-// 5. EVENT LISTENERS
-// ========================================================
+// Ativa modo foco automaticamente se houver texto
+if (ui.textarea.value.length > 0) {
+    document.body.classList.add('focus-mode', 'has-content');
+}
+
+/* ---------- EVENT LISTENERS ---------- */
 
 ui.micBtn.addEventListener('click', () => {
-    // Feedback Tátil (Haptics) Nativo do Android
-    if (navigator.vibrate) navigator.vibrate(50);
-
-    if (speechManager.isRecording) {
-        speechManager.stop();
-        toggleWakeLock(false);
-    } else {
-        updateStatus('starting'); 
-        speechManager.start();
-        toggleWakeLock(true);
-    }
-});
-
-ui.btnCopy.addEventListener('click', async () => {
-    const text = ui.textarea.value.trim();
-    if (!text) return;
-    
-    if (navigator.vibrate) navigator.vibrate(30);
-
-    try {
-        await navigator.clipboard.writeText(text);
-        
-        // Feedback Visual
-        ui.btnCopy.classList.add('copy-success', 'pulsing');
-        
-        // Tenta usar a API nativa de Compartilhamento do Android (Web Share API)
-        if (navigator.share) {
-            await navigator.share({
-                title: 'Texto Ditado',
-                text: text
-            });
-        }
-    } catch (e) {
-        console.warn('Erro ao copiar ou compartilhar:', e);
-    } finally {
-        setTimeout(() => ui.btnCopy.classList.remove('copy-success', 'pulsing'), 1500);
-    }
+    haptic(50);
+    core.toggleRecording();
 });
 
 ui.btnAiFix.addEventListener('click', async () => {
+    haptic([30, 50, 30]);
+    try { await core.fixGrammar(); } 
+    catch (e) { showToast(e.message === 'EMPTY_TEXT' ? 'Dite algo primeiro' : 'Erro na IA'); }
+});
+
+ui.btnAiLegal.addEventListener('click', async () => {
+    haptic([30, 50, 30]);
+    try { await core.convertToLegal(); }
+    catch (e) { showToast(e.message === 'EMPTY_TEXT' ? 'Dite algo primeiro' : 'Erro na IA'); }
+});
+
+ui.btnCopy.addEventListener('click', async () => {
+    haptic(30);
     const text = ui.textarea.value.trim();
-    if (!text) return alert("Digite ou dite algo primeiro.");
-
-    if (navigator.vibrate) navigator.vibrate([30, 50, 30]); // Padrão de vibração
-
-    // Pausa a gravação por segurança caso esteja ativa
-    if (speechManager.isRecording) {
-        speechManager.stop();
-        toggleWakeLock(false);
-    }
-
-    ui.btnAiFix.classList.add('pulsing');
-    updateStatus('processing');
+    if (!text) return;
+    await core.copyToClipboard(text);
     
-    try {
-        const result = await aiService.fixGrammar(text);
-        ui.textarea.value = result;
-        saveContent();
-        updateStatus('');
-    } catch (error) {
-        alert("Erro na IA: " + error.message);
-        updateStatus('error');
-        setTimeout(() => updateStatus(''), 2000);
-    } finally {
-        ui.btnAiFix.classList.remove('pulsing');
+    // Web Share API nativa do Android
+    if (navigator.share) {
+        try { await navigator.share({ title: 'Texto Ditado', text }); } catch {}
+    }
+    showToast('Copiado!');
+});
+
+ui.btnExport.addEventListener('click', () => {
+    haptic(30);
+    try { core.exportTxt(); showToast('Arquivo salvo!'); }
+    catch (e) { showToast('Nada para exportar'); }
+});
+
+ui.btnClear.addEventListener('click', () => {
+    haptic(40);
+    const hadContent = core.clearWithUndo();
+    if (hadContent) {
+        showToast('Texto limpo', 'Desfazer', () => core.performUndo());
+        // Retorna ao modo minimalista (apenas microfone visível)
+        document.body.classList.remove('has-content', 'focus-mode');
     }
 });
 
-// ========================================================
-// 6. INICIALIZAÇÃO
-// ========================================================
-
-function updateCharCount() {
-    ui.charCount.textContent = `${ui.textarea.value.length} caracteres`;
+// Toggle de motor Whisper
+if (ui.engineToggle) {
+    const saved = localStorage.getItem('dd_engine_pref') || 'native';
+    ui.engineToggle.checked = saved === 'whisper';
+    if (ui.engineLabel) ui.engineLabel.textContent = saved === 'whisper' ? 'Whisper AI' : 'Nativo';
+    
+    ui.engineToggle.addEventListener('change', (e) => {
+        const isWhisper = e.target.checked;
+        core.setEngine(isWhisper);
+        if (ui.engineLabel) ui.engineLabel.textContent = isWhisper ? 'Whisper AI' : 'Nativo';
+    });
 }
-
-function saveContent() {
-    localStorage.setItem(CONFIG.STORAGE_KEYS.TEXT, ui.textarea.value);
-}
-
-function loadContent() {
-    const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.TEXT);
-    if (saved) {
-        ui.textarea.value = saved;
-        updateCharCount();
-    }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    loadContent();
-    // Garante que o visualizador fique oculto até que a gravação comece
-    if (ui.canvas) {
-        ui.canvas.style.display = 'block'; 
-        ui.canvas.classList.remove('audio-detected');
-    }
-});
