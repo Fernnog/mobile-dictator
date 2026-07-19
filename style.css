@@ -1324,4 +1324,8 @@ body.is-pip-mode .btn-toggle-size {
     transform: translateY(-2px);
 }
 
-.btn-action.sta
+/* Garante que o toast de instalação PWA seja interativo */
+#pwa-install-toast {
+    pointer-events: auto;
+    animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

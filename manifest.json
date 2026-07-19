@@ -1,12 +1,12 @@
 {
   "name": "Ditado Digital Pro",
   "short_name": "Ditado Pro",
-  "description": "Sua voz textualizada com inteligência artificial e persistência de dados.",
-  "scope": "./",
   "start_url": "./android.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "scope": "./",
   "icons": [
     {
       "src": "assets/icon-192.png",
@@ -20,5 +20,8 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "description": "Sua voz textualizada com inteligência artificial.",
+  "lang": "pt-BR",
+  "dir": "ltr"
 }
