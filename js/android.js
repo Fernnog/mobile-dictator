@@ -140,3 +140,41 @@ if (ui.engineToggle) {
         if (ui.engineLabel) ui.engineLabel.textContent = isWhisper ? 'Whisper AI' : 'Nativo';
     });
 }
+
+/* ---------- INSTALAÇÃO PWA (MOBILE) ---------- */
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Previne o mini-infobar padrão do Chrome para controle customizado
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Evita duplicar o toast se o evento disparar múltiplas vezes
+    if (document.getElementById('pwa-install-toast')) return;
+
+    const toast = document.createElement('div');
+    toast.id = 'pwa-install-toast';
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <span>Instalar Ditado Pro na tela inicial?</span>
+        <button class="btn-undo" id="pwaInstallAction">Instalar</button>
+    `;
+
+    ui.toastContainer.appendChild(toast);
+
+    document.getElementById('pwaInstallAction').addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            toast.remove();
+            if (ui.statusMsg) showToast('App instalado com sucesso!');
+        }
+        deferredPrompt = null;
+    });
+});
+
+// Se o app já estiver rodando como standalone (instalado), remove qualquer resíduo
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    document.getElementById('pwa-install-toast')?.remove();
+}
